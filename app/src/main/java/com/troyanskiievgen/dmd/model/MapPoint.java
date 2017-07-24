@@ -1,5 +1,7 @@
 package com.troyanskiievgen.dmd.model;
 
+import com.google.android.gms.maps.model.LatLng;
+
 /**
  * Created by Relax on 24.07.2017.
  */
@@ -50,6 +52,10 @@ public class MapPoint {
 
     public void setLng(double lng) {
         this.lng = lng;
+    }
+
+    public LatLng getLatLng() {
+        return new LatLng(lat, lng);
     }
 
     @Override
