@@ -1,43 +1,43 @@
 package com.troyanskiievgen.dmd.ui.fragment;
 
 import android.Manifest;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.arellomobile.mvp.MvpFragment;
+import com.arellomobile.mvp.presenter.InjectPresenter;
+import com.arellomobile.mvp.presenter.PresenterType;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapView;
 import com.google.android.gms.maps.MapsInitializer;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.model.CameraPosition;
-import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.sothree.slidinguppanel.SlidingUpPanelLayout;
 import com.troyanskiievgen.dmd.R;
 import com.troyanskiievgen.dmd.model.MapPoint;
-import com.troyanskiievgen.dmd.network.RESTClient;
-
-import java.util.List;
+import com.troyanskiievgen.dmd.network.NetworkReceiver;
+import com.troyanskiievgen.dmd.presenter.AppMapFragmentPresenter;
+import com.troyanskiievgen.dmd.view.AppMapFragmentView;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
-import retrofit2.Call;
-import retrofit2.Callback;
-import retrofit2.Response;
 
 /**
  * Created by Relax on 24.07.2017.
  */
 
-public class AppMapFragment extends MvpFragment implements GoogleMap.OnMarkerClickListener {
+public class AppMapFragment extends MvpFragment implements AppMapFragmentView, GoogleMap.OnMarkerClickListener, NetworkReceiver.NetworkStateReceiverListener {
 
     @BindView(R.id.point_title)
     TextView pointTitle;
@@ -45,18 +45,34 @@ public class AppMapFragment extends MvpFragment implements GoogleMap.OnMarkerCli
     TextView pointDescription;
     @BindView(R.id.map_view)
     MapView mMapView;
+    @BindView(R.id.sliding_layout)
+    SlidingUpPanelLayout slidingPanel;
+
+    @InjectPresenter(type = PresenterType.GLOBAL)
+    AppMapFragmentPresenter mapFragmentPresenter;
 
     private GoogleMap googleMap;
 
-    List<MapPoint> result;
+    private NetworkReceiver networkStateReceiver;
+
+    public static AppMapFragment getInstance() {
+        // TODO: 24.07.2017 you could put some data in bundle here if you need to store some data
+        return new AppMapFragment();
+    }
 
     @Nullable
     @Override
     public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container, Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_map, container, false);
         ButterKnife.bind(this, view);
-        mMapView.onCreate(savedInstanceState);
+        initMapView(savedInstanceState);
+        setupSlidePanel();
+        mapFragmentPresenter.hidePanel();
+        return view;
+    }
 
+    private void initMapView(Bundle savedInstanceState) {
+        mMapView.onCreate(savedInstanceState);
         mMapView.onResume(); // needed to get the map to display immediately
 
         try {
@@ -72,8 +88,6 @@ public class AppMapFragment extends MvpFragment implements GoogleMap.OnMarkerCli
                 setupMap();
             }
         });
-
-        return view;
     }
 
     private boolean isLocationPermissionDisabled() {
@@ -96,31 +110,28 @@ public class AppMapFragment extends MvpFragment implements GoogleMap.OnMarkerCli
             googleMap.setMyLocationEnabled(true);
             googleMap.setOnMarkerClickListener(this);
             googleMap.getUiSettings().setMapToolbarEnabled(false);
-            RESTClient.getInstance().getMapPoints(2, new Callback<List<MapPoint>>() {
-                @Override
-                public void onResponse(Call<List<MapPoint>> call, Response<List<MapPoint>> response) {
-                    result = response.body();
-                    for(int i = 0; i < result.size(); i++) {
-                        MapPoint point = result.get(i);
-                        Marker marker = googleMap.addMarker(new MarkerOptions()
-                                .position(point.getLatLng())
-                                .title(point.getTitle())
-                                .snippet(point.getDescription()));
-                        marker.setTag(i);
-                    }
-                }
-
-                @Override
-                public void onFailure(Call<List<MapPoint>> call, Throwable t) {
-                    Log.d("DEBUG", "error when try to obtain data");
-                }
-            });
-
-
-//            // For zooming automatically to the location of the marker
-//            CameraPosition cameraPosition = new CameraPosition.Builder().target(sydney).zoom(12).build();
-//            googleMap.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
+            googleMap.getUiSettings().setMyLocationButtonEnabled(false);
+            mapFragmentPresenter.setupData();
         }
+    }
+
+    private void setupSlidePanel() {
+        slidingPanel.addPanelSlideListener(new SlidingUpPanelLayout.PanelSlideListener() {
+            @Override
+            public void onPanelSlide(View panel, float slideOffset) {
+                // TODO: 25.07.2017 we could use offset to set panel proportional in same position when change oriintation
+            }
+
+            @Override
+            public void onPanelStateChanged(View panel, SlidingUpPanelLayout.PanelState previousState, SlidingUpPanelLayout.PanelState newState) {
+                if(newState.equals(SlidingUpPanelLayout.PanelState.EXPANDED)) {
+                    mapFragmentPresenter.expandPanel();
+                }
+                if(newState.equals(SlidingUpPanelLayout.PanelState.COLLAPSED)) {
+                    mapFragmentPresenter.collapsePanel();
+                }
+            }
+        });
     }
 
     @Override
@@ -141,11 +152,13 @@ public class AppMapFragment extends MvpFragment implements GoogleMap.OnMarkerCli
     public void onResume() {
         super.onResume();
         mMapView.onResume();
+        registerNetworkListener();
     }
 
     @Override
     public void onPause() {
         super.onPause();
+        unregisterNetworkListener();
         mMapView.onPause();
     }
 
@@ -163,8 +176,76 @@ public class AppMapFragment extends MvpFragment implements GoogleMap.OnMarkerCli
 
     @Override
     public boolean onMarkerClick(Marker marker) {
-        pointTitle.setText(result.get((int)marker.getTag()).getTitle());
-        pointDescription.setText(result.get((int)marker.getTag()).getDescription());
+        mapFragmentPresenter.onMarkerClick((int)marker.getTag());
         return true;
+    }
+
+
+    public void registerNetworkListener() {
+        if (networkStateReceiver == null) {
+            networkStateReceiver = new NetworkReceiver(this);
+            getActivity().registerReceiver(networkStateReceiver, new IntentFilter(android.net.ConnectivityManager.CONNECTIVITY_ACTION));
+        }
+    }
+
+
+    public void unregisterNetworkListener() {
+        if (networkStateReceiver != null) {
+            getActivity().unregisterReceiver(networkStateReceiver);
+            networkStateReceiver = null;
+        }
+    }
+
+    @Override
+    public void networkAvailable() {
+        setupMap();
+    }
+
+    @Override
+    public void networkUnavailable() {
+        if (getActivity() != null) {
+            // TODO: 25.07.2017 we could transfer check network connection in activity when we have more then 1 fragment
+            Toast.makeText(getActivity(), R.string.error_internen_connection, Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    @Override
+    public void addMarkerToMap(MapPoint point, int position) {
+        Marker marker = googleMap.addMarker(new MarkerOptions()
+                .position(point.getLatLng())
+                .title(point.getTitle())
+                .snippet(point.getDescription()));
+        marker.setTag(position);
+    }
+
+    @Override
+    public void showError(String error) {
+        // TODO: 24.07.2017 impl show some error
+    }
+
+    @Override
+    public void onMarkerClick(MapPoint mapPoint) {
+        pointTitle.setText(mapPoint.getTitle());
+        pointDescription.setText(mapPoint.getDescription());
+        CameraPosition cameraPosition = new CameraPosition.Builder().target(mapPoint.getLatLng()).zoom(2).build();
+        if (googleMap != null) {
+            googleMap.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
+        }
+        mapFragmentPresenter.collapsePanel();
+    }
+
+    @Override
+    public void collapsePanel() {
+        slidingPanel.setPanelState(SlidingUpPanelLayout.PanelState.COLLAPSED);
+    }
+
+    @Override
+    public void expandPanel() {
+        slidingPanel.setPanelState(SlidingUpPanelLayout.PanelState.EXPANDED);
+    }
+
+    @Override
+    public void hidePanel() {
+        slidingPanel.setPanelState(SlidingUpPanelLayout.PanelState.HIDDEN);
     }
 }

@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">DMD</string>
+    <string name="error_internen_connection">Internet connection not available.</string>
+    <string name="error_internal_server">Internal server error</string>
 </resources>
