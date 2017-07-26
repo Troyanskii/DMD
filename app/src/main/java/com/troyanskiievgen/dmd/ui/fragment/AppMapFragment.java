@@ -1,14 +1,14 @@
 package com.troyanskiievgen.dmd.ui.fragment;
 
 import android.Manifest;
+import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
-import android.view.KeyEvent;
 import android.view.LayoutInflater;
-import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
@@ -42,6 +42,8 @@ import butterknife.ButterKnife;
 
 public class AppMapFragment extends MvpFragment implements AppMapFragmentView, GoogleMap.OnMarkerClickListener,
         NetworkReceiver.NetworkStateReceiverListener, ActionBackListener {
+
+    private static final int LOCATION_PERMISSION_KEY = 7;
 
     @BindView(R.id.point_title)
     TextView pointTitle;
@@ -88,7 +90,9 @@ public class AppMapFragment extends MvpFragment implements AppMapFragmentView, G
             @Override
             public void onMapReady(GoogleMap mMap) {
                 googleMap = mMap;
-                setupMap();
+                if(!isLocationPermissionDisabled()) {
+                    setupMap();
+                }
             }
         });
     }
@@ -104,18 +108,18 @@ public class AppMapFragment extends MvpFragment implements AppMapFragmentView, G
 
     private void requestLocationPermission() {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-            requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION}, 5);
+            requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION}, LOCATION_PERMISSION_KEY);
         }
     }
 
     private void setupMap() {
-        if (!isLocationPermissionDisabled()) {
+//        if (!isLocationPermissionDisabled()) {
             googleMap.setMyLocationEnabled(true);
             googleMap.setOnMarkerClickListener(this);
             googleMap.getUiSettings().setMapToolbarEnabled(false);
             googleMap.getUiSettings().setMyLocationButtonEnabled(false);
             mapFragmentPresenter.setupData();
-        }
+//        }
     }
 
     private void setupSlidePanel() {
@@ -139,14 +143,23 @@ public class AppMapFragment extends MvpFragment implements AppMapFragmentView, G
 
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-        if (requestCode == 5) {
-            if (permissions.length == 1 &&
-                    permissions[0] == Manifest.permission.ACCESS_FINE_LOCATION &&
+        if (requestCode == LOCATION_PERMISSION_KEY) {
+            if (permissions.length == 2 &&
+                    permissions[0].equals(Manifest.permission.ACCESS_FINE_LOCATION) &&
                     grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 setupMap();
             } else {
-                // TODO: 24.07.2017 add info dialog
-                requestLocationPermission();
+                AlertDialog alertDialog = new AlertDialog.Builder(getActivity()).create();
+                alertDialog.setTitle(getString(R.string.alert_info_title));
+                alertDialog.setMessage(getString(R.string.alert_no_permission));
+                alertDialog.setButton(AlertDialog.BUTTON_NEUTRAL, getString(R.string.alert_ok_button),
+                        new DialogInterface.OnClickListener() {
+                            public void onClick(DialogInterface dialog, int which) {
+                                requestLocationPermission();
+                                dialog.dismiss();
+                            }
+                        });
+                alertDialog.show();
             }
         }
     }
@@ -201,7 +214,9 @@ public class AppMapFragment extends MvpFragment implements AppMapFragmentView, G
 
     @Override
     public void networkAvailable() {
-        setupMap();
+        if (googleMap.isMyLocationEnabled() && !isLocationPermissionDisabled()) {
+            setupMap();
+        }
     }
 
     @Override

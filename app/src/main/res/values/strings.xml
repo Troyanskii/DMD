@@ -2,4 +2,7 @@
     <string name="app_name">DMD</string>
     <string name="error_internen_connection">Internet connection not available.</string>
     <string name="error_internal_server">Internal server error</string>
+    <string name="alert_ok_button">OK</string>
+    <string name="alert_info_title">Info</string>
+    <string name="alert_no_permission">The application need location permission.</string>
 </resources>
