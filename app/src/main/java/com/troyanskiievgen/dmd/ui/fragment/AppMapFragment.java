@@ -6,7 +6,9 @@ import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
+import android.view.KeyEvent;
 import android.view.LayoutInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
@@ -28,6 +30,7 @@ import com.troyanskiievgen.dmd.R;
 import com.troyanskiievgen.dmd.model.MapPoint;
 import com.troyanskiievgen.dmd.network.NetworkReceiver;
 import com.troyanskiievgen.dmd.presenter.AppMapFragmentPresenter;
+import com.troyanskiievgen.dmd.ui.listeners.ActionBackListener;
 import com.troyanskiievgen.dmd.view.AppMapFragmentView;
 
 import butterknife.BindView;
@@ -37,7 +40,8 @@ import butterknife.ButterKnife;
  * Created by Relax on 24.07.2017.
  */
 
-public class AppMapFragment extends MvpFragment implements AppMapFragmentView, GoogleMap.OnMarkerClickListener, NetworkReceiver.NetworkStateReceiverListener {
+public class AppMapFragment extends MvpFragment implements AppMapFragmentView, GoogleMap.OnMarkerClickListener,
+        NetworkReceiver.NetworkStateReceiverListener, ActionBackListener {
 
     @BindView(R.id.point_title)
     TextView pointTitle;
@@ -67,7 +71,6 @@ public class AppMapFragment extends MvpFragment implements AppMapFragmentView, G
         ButterKnife.bind(this, view);
         initMapView(savedInstanceState);
         setupSlidePanel();
-        mapFragmentPresenter.hidePanel();
         return view;
     }
 
@@ -231,7 +234,7 @@ public class AppMapFragment extends MvpFragment implements AppMapFragmentView, G
         if (googleMap != null) {
             googleMap.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
         }
-        mapFragmentPresenter.collapsePanel();
+        slidingPanel.setPanelState(SlidingUpPanelLayout.PanelState.COLLAPSED);
     }
 
     @Override
@@ -245,7 +248,20 @@ public class AppMapFragment extends MvpFragment implements AppMapFragmentView, G
     }
 
     @Override
-    public void hidePanel() {
+    public void onBackPress() {
         slidingPanel.setPanelState(SlidingUpPanelLayout.PanelState.HIDDEN);
+    }
+
+    public boolean isPanelHidden() {
+        return slidingPanel.getPanelState() == SlidingUpPanelLayout.PanelState.HIDDEN;
+    }
+
+    @Override
+    public boolean onActionBackPress() {
+        if(isPanelHidden()) {
+            return false;
+        }
+        mapFragmentPresenter.onBackPress();
+        return true;
     }
 }

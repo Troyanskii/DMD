@@ -3,6 +3,7 @@ package com.troyanskiievgen.dmd.view;
 import com.arellomobile.mvp.MvpView;
 import com.arellomobile.mvp.viewstate.strategy.AddToEndSingleStrategy;
 import com.arellomobile.mvp.viewstate.strategy.OneExecutionStateStrategy;
+import com.arellomobile.mvp.viewstate.strategy.SingleStateStrategy;
 import com.arellomobile.mvp.viewstate.strategy.StateStrategyType;
 import com.troyanskiievgen.dmd.model.MapPoint;
 
@@ -26,9 +27,10 @@ public interface AppMapFragmentView extends MvpView {
 
     @StateStrategyType(AddToEndSingleStrategy.class)
     void expandPanel();
+//
+//    @StateStrategyType(OneExecutionStateStrategy.class)
+//    void hidePanel();
 
-    @StateStrategyType(OneExecutionStateStrategy.class)
-    void hidePanel();
-
-
+    @StateStrategyType(SingleStateStrategy.class)
+    void onBackPress();
 }

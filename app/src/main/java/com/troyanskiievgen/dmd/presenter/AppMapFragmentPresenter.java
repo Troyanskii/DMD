@@ -23,7 +23,6 @@ import retrofit2.Response;
 public class AppMapFragmentPresenter extends MvpPresenter<AppMapFragmentView>{
 
     private List<MapPoint> pointsResult;
-    private boolean isPointSelected = false;
 
     @Override
     protected void onFirstViewAttach() {
@@ -63,7 +62,6 @@ public class AppMapFragmentPresenter extends MvpPresenter<AppMapFragmentView>{
 
     public void onMarkerClick(int position) {
         getViewState().onMarkerClick(pointsResult.get(position));
-        isPointSelected = true;
     }
 
     public void collapsePanel() {
@@ -74,9 +72,7 @@ public class AppMapFragmentPresenter extends MvpPresenter<AppMapFragmentView>{
         getViewState().expandPanel();
     }
 
-    public void hidePanel() {
-        if(!isPointSelected) {
-            getViewState().hidePanel();
-        }
+    public void onBackPress() {
+        getViewState().onBackPress();
     }
 }

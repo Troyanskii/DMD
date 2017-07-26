@@ -11,7 +11,7 @@
         android:layout_height="match_parent"
         android:gravity="bottom"
         sothree:umanoPanelHeight="35dp"
-        sothree:umanoInitialState="collapsed">
+        sothree:umanoInitialState="hidden">
 
         <com.google.android.gms.maps.MapView
             android:id="@+id/map_view"
